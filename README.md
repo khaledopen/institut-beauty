@@ -8,12 +8,14 @@ Prérequis : Node.js 22.12+ ou 24, npm et PostgreSQL (Docker facultatif).
 
 ```powershell
 npm install
-Copy-Item .env.example .env
+# Créer votre fichier .env local avec les variables décrites ci-dessous
 docker compose up -d
 npm run db:generate
 npm run db:deploy
 npm run dev
 ```
+
+Créez un fichier `.env` sur votre ordinateur avec `DATABASE_URL` (votre connexion PostgreSQL), `PORT=3001`, `APP_ORIGIN=http://localhost:5173` et `NODE_ENV=development`. Les fichiers d’environnement ne sont pas publiés dans ce dépôt. Configurez vos exclusions Git locales avant tout commit pour exclure `.env`, `.env.*`, `node_modules/`, `dist/` et les journaux `*.log`.
 
 Si Docker n’est pas disponible, créez une base PostgreSQL locale et renseignez `DATABASE_URL`. Le frontend fonctionne sur `http://localhost:5173`, l’API sur `http://127.0.0.1:3001`. Ouvrez bien `localhost:5173` pour correspondre à `APP_ORIGIN`. Aucun compte ni donnée métier n’est préchargé. Créez votre institut via `/inscription`, puis vos prestations via `/app/prestations`.
 
