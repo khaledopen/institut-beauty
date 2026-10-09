@@ -17,6 +17,8 @@ import bcrypt from "bcryptjs";
 import { randomBytes, createHash } from "node:crypto";
 import { z } from "zod";
 import { canManageServices, tenantWhere } from "./policy.js";
+import { registerOperations } from "./operations.js";
+import { BusinessError } from "./booking.js";
 
 export const db = new PrismaClient();
 export const app = express();
@@ -189,16 +191,14 @@ app.post("/api/services", authenticate, async (req: AuthRequest, res) => {
       .json({ error: "Vous ne pouvez pas modifier le catalogue." });
     return;
   }
-  res
-    .status(201)
-    .json(
-      await db.service.create({
-        data: {
-          ...serviceInput.parse(req.body),
-          instituteId: req.member!.instituteId,
-        },
-      }),
-    );
+  res.status(201).json(
+    await db.service.create({
+      data: {
+        ...serviceInput.parse(req.body),
+        instituteId: req.member!.instituteId,
+      },
+    }),
+  );
 });
 app.patch("/api/services/:id", authenticate, async (req: AuthRequest, res) => {
   if (!canManageServices(req.member!.role)) {
@@ -220,8 +220,14 @@ app.delete("/api/services/:id", authenticate, async (req: AuthRequest, res) => {
     res.status(403).json({ error: "Accès refusé." });
     return;
   }
-  const result = await db.service.deleteMany({
-    where: tenantWhere(req.member!.instituteId, String(req.params.id)),
+  const scope = tenantWhere(req.member!.instituteId, String(req.params.id));
+  const result = await db.$transaction(async (tx) => {
+    const referenced = await tx.appointment.count({
+      where: { instituteId: scope.instituteId, serviceId: scope.id },
+    });
+    return referenced
+      ? tx.service.updateMany({ where: scope, data: { active: false } })
+      : tx.service.deleteMany({ where: scope });
   });
   if (!result.count) {
     res.status(404).json({ error: "Prestation introuvable." });
@@ -229,20 +235,49 @@ app.delete("/api/services/:id", authenticate, async (req: AuthRequest, res) => {
   }
   res.json({ ok: true });
 });
+registerOperations(app, db, authenticate);
 app.get("/api/dashboard", authenticate, async (req: AuthRequest, res) => {
   const instituteId = req.member!.instituteId;
+  const role = req.member!.role;
+  const canReadClients = ["OWNER", "MANAGER", "RECEPTIONIST"].includes(role);
   const [services, clients, appointments] = await Promise.all([
     db.service.count({ where: { instituteId, active: true } }),
-    db.client.count({ where: { instituteId } }),
-    db.appointment.findMany({
-      where: { instituteId, startsAt: { gte: new Date() } },
-      orderBy: { startsAt: "asc" },
-      take: 8,
-    }),
+    canReadClients
+      ? db.client.count({ where: { instituteId, active: true } })
+      : Promise.resolve(null),
+    role === "CASHIER"
+      ? Promise.resolve([])
+      : db.appointment.findMany({
+          where: {
+            instituteId,
+            ...(role === "PRACTITIONER"
+              ? { employee: { memberId: req.member!.id } }
+              : {}),
+            endsAt: { gte: new Date() },
+            status: { notIn: ["CANCELLED", "NO_SHOW", "COMPLETED"] },
+          },
+          include: { employee: { select: { name: true } } },
+          orderBy: { startsAt: "asc" },
+          take: 8,
+        }),
   ]);
   res.json({ services, clients, appointments });
 });
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (error instanceof BusinessError) {
+    res.status(error.status).json({ error: error.message });
+    return;
+  }
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    ["P2034", "P2004"].includes(error.code)
+  ) {
+    res.status(409).json({
+      error:
+        "Une opération concurrente a modifié ce créneau. Actualisez puis réessayez.",
+    });
+    return;
+  }
   if (error instanceof z.ZodError) {
     res
       .status(400)
@@ -253,16 +288,14 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2002"
   ) {
-    res.status(409).json({ error: "Cette adresse e-mail est déjà utilisée." });
+    res.status(409).json({ error: "Cette information est déjà utilisée." });
     return;
   }
   console.error(error instanceof Error ? error.name : "API error");
-  res
-    .status(503)
-    .json({
-      error:
-        "Service indisponible. Vérifiez la connexion à PostgreSQL et réessayez.",
-    });
+  res.status(503).json({
+    error:
+      "Service indisponible. Vérifiez la connexion à PostgreSQL et réessayez.",
+  });
 });
 if (process.env.NODE_ENV !== "test") {
   const server = app.listen(Number(process.env.PORT || 3001), "127.0.0.1", () =>

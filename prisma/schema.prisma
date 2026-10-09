@@ -32,6 +32,7 @@ model Institute {
   services Service[]
   clients Client[]
   appointments Appointment[]
+  employees Employee[]
 }
 model Member {
   id String @id @default(uuid())
@@ -41,7 +42,9 @@ model Member {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
   sessions Session[]
+  employee Employee?
   @@unique([userId, instituteId])
+  @@unique([instituteId, id])
 }
 model Session {
   tokenHash String @id
@@ -62,6 +65,9 @@ model Service {
   duration Int
   active Boolean @default(true)
   institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  employees EmployeeService[]
+  @@unique([instituteId, id])
   @@index([instituteId, active])
 }
 model Client {
@@ -70,8 +76,13 @@ model Client {
   name String
   phone String
   email String?
+  birthDate DateTime? @db.Date
+  marketingConsent Boolean @default(false)
+  active Boolean @default(true)
   createdAt DateTime @default(now())
   institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  @@unique([instituteId, id])
   @@index([instituteId, name])
 }
 model Appointment {
@@ -81,9 +92,63 @@ model Appointment {
   phone String
   serviceName String
   startsAt DateTime
+  endsAt DateTime
+  employeeId String?
+  clientId String?
+  serviceId String?
   duration Int
   price Int
   status String @default("PENDING")
   institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  employee Employee? @relation(fields: [instituteId, employeeId], references: [instituteId, id], onDelete: NoAction, onUpdate: NoAction)
+  client Client? @relation(fields: [instituteId, clientId], references: [instituteId, id], onDelete: NoAction, onUpdate: NoAction)
+  service Service? @relation(fields: [instituteId, serviceId], references: [instituteId, id], onDelete: NoAction, onUpdate: NoAction)
   @@index([instituteId, startsAt])
+  @@index([instituteId, employeeId, startsAt])
+}
+model Employee {
+  id String @id @default(uuid())
+  instituteId String
+  memberId String? @unique
+  name String
+  phone String @default("")
+  job String
+  active Boolean @default(true)
+  institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  member Member? @relation(fields: [instituteId, memberId], references: [instituteId, id], onDelete: NoAction, onUpdate: NoAction)
+  schedules EmployeeSchedule[]
+  absences EmployeeAbsence[]
+  services EmployeeService[]
+  appointments Appointment[]
+  @@unique([instituteId, memberId])
+  @@unique([instituteId, id])
+  @@index([instituteId, active])
+}
+model EmployeeService {
+  instituteId String
+  employeeId String
+  serviceId String
+  employee Employee @relation(fields: [instituteId, employeeId], references: [instituteId, id], onDelete: Cascade)
+  service Service @relation(fields: [instituteId, serviceId], references: [instituteId, id], onDelete: Cascade)
+  @@id([instituteId, employeeId, serviceId])
+}
+model EmployeeSchedule {
+  id String @id @default(uuid())
+  instituteId String
+  employeeId String
+  weekday Int
+  startMinute Int
+  endMinute Int
+  employee Employee @relation(fields: [instituteId, employeeId], references: [instituteId, id], onDelete: Cascade)
+  @@unique([instituteId, employeeId, weekday])
+}
+model EmployeeAbsence {
+  id String @id @default(uuid())
+  instituteId String
+  employeeId String
+  startsAt DateTime
+  endsAt DateTime
+  reason String @default("")
+  employee Employee @relation(fields: [instituteId, employeeId], references: [instituteId, id], onDelete: Cascade)
+  @@index([instituteId, employeeId, startsAt])
 }

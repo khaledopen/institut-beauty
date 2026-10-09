@@ -17,7 +17,7 @@ L’identité authentifiée possède des adhésions à des instituts. Une sessio
 | Gestionnaire de caisse | Encaissements, clôtures et ventes ; pas de notes clients                    |
 | Super administrateur   | Exploitation plateforme ; accès métier exceptionnel et journalisé           |
 
-Première tranche : propriétaire et responsable modifient le catalogue ; les autres rôles peuvent seulement le consulter. Les autres permissions seront implémentées et testées avec leurs modules.
+Permissions livrées : propriétaire / responsable gèrent le catalogue et l’équipe ; propriétaire / responsable / réception gèrent les clients et rendez-vous. Le praticien ne voit que son planning et sa fiche liée et peut démarrer / terminer ses soins. Le caissier ne reçoit aucune liste clients ou rendez-vous. Les invitations et l’administration des comptes restent à développer.
 
 ## Parcours
 
@@ -52,8 +52,12 @@ Avec la croissance, extraire les modules `auth`, `catalog`, `appointments`, `bil
 - `/` : vitrine ivoire, rose poudré et brun ; hero photographique, fonctionnalités, formules sans faux prix, FAQ.
 - `/apercu` : tableau de bord illustratif, sidebar, quatre KPI, courbe, prestations favorites et rendez-vous. Bannière explicite de maquette.
 - `/inscription`, `/connexion` : formulaire et panneau photographique.
-- `/app` : vue réelle, compteurs PostgreSQL et états vides honnêtes.
+- `/app` : compteurs PostgreSQL et prochains rendez-vous selon le rôle.
 - `/app/prestations` : recherche, filtres, cartes, création / modification / suppression persistées.
+- `/app/clients` : fiches, recherche, archivage et historique des visites.
+- `/app/equipe` : qualifications, horaires hebdomadaires et absences.
+- `/app/agenda`, `/app/rendezvous` : planning, disponibilités, réservations et statuts.
+- `/apercu/clients`, `/apercu/equipe`, `/apercu/agenda` : exemples illustratifs.
 
 Les titres utilisent actuellement Georgia comme repli local. Playfair Display et Inter pourront être auto-hébergées avant finalisation. Aucun témoignage inventé.
 
@@ -61,7 +65,7 @@ Les titres utilisent actuellement Georgia comme repli local. Playfair Display et
 
 Phase 1 : architecture et parcours proposés, modèle cible documenté, premières maquettes exécutables.
 Phase 2 : première fondation fonctionnelle : inscription, connexion, session, isolation du catalogue, rôles. Restent vérification e-mail, récupération de mot de passe, invitations, audit et tests d’isolation en base.
-Phase 3 : catalogue livré en première version ; ajouter catégories relationnelles, photos et habilitations, équipe, clientèle, agenda et conflits.
+Phase 3 : clientèle, équipe, qualifications, horaires, absences et agenda livrés. Conflits contrôlés par transactions sérialisables et exclusion PostgreSQL, relations composites entre données d’un même institut, tests réels d’isolation et concurrence. Restent catégories relationnelles, photos, invitations et administration des comptes.
 Phase 4 : caisse, stock, dépenses, promotions, rapports et exports. Pas d’encaissement simulé.
 Phase 5 : réservation publique, super administration, abonnements, notifications, intégrations e-mail / paiement.
 Phase 6 : tests d’intégration, accessibilité complète, mesures de performance, supervision et sauvegardes ; audit avant commercialisation.

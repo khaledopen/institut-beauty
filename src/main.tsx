@@ -50,6 +50,8 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts";
 import { api, type Me, type Service } from "./api";
+import { ClientsPage, EmployeesPage, AgendaPage } from "./operations";
+import { Modal } from "./ui";
 import hero from "../pexels-gustavo-fring-7446676.jpg";
 import portrait from "../pexels-marlonretratos-37273224.jpg";
 import goldenBeauty from "../5882641-model-2498663.jpg";
@@ -61,6 +63,7 @@ import floralBeauty from "../pexels-nemmy-media-694031137-20847963.jpg";
 import productCare from "../pexels-richan-dwi-putra-88532517-12616442.jpg";
 import hairStudio from "../pexels-sie7e-29189917.jpg";
 import "./styles.css";
+import "./surfaces.css";
 import {
   PageMotion,
   HeroSlideshow,
@@ -144,31 +147,6 @@ function Brand() {
         BELLEZA<small>BEAUTY BUSINESS MANAGEMENT</small>
       </span>
     </Link>
-  );
-}
-function Modal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    dialog.current?.showModal();
-    return () => dialog.current?.close();
-  }, []);
-  return (
-    <dialog
-      ref={dialog}
-      className="modal-backdrop"
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-    >
-      {children}
-    </dialog>
   );
 }
 function PhotoGallery({ compact = false }: { compact?: boolean }) {
@@ -399,9 +377,8 @@ function Marketing() {
             ))}
           </div>
           <p className="roadmap-note">
-            Développement progressif : inscription, connexion et catalogue
-            disponibles dans cette première version. Agenda et gestion
-            commerciale à venir.
+            Inscription, catalogue, clientèle, équipe et agenda disponibles. La
+            gestion commerciale arrive dans la prochaine étape.
           </p>
         </section>
         <section id="experience" className="experience section">
@@ -474,9 +451,21 @@ function Marketing() {
           <div className="pricing-grid">
             {["Starter", "Professional", "Premium"].map((plan, i) => (
               <article className={i === 1 ? "featured" : ""} key={plan}>
-                <small>
-                  {i === 1 ? "POUR ALLER PLUS LOIN" : "VOTRE PROCHAIN CHAPITRE"}
-                </small>
+                <div className="plan-top">
+                  <span className="plan-index" aria-hidden="true">
+                    0{i + 1}
+                  </span>
+                  <small>
+                    {
+                      [
+                        "LES ESSENTIELS",
+                        "POUR GRANDIR",
+                        "UNE VISION D’ENSEMBLE",
+                      ][i]
+                    }
+                  </small>
+                  <Sparkles size={24} aria-hidden="true" />
+                </div>
                 <h3>{plan}</h3>
                 <b>Tarif à définir</b>
                 <p>
@@ -738,10 +727,11 @@ function Auth({ register = false }: { register?: boolean }) {
 
 const navigation = [
   { Icon: LayoutDashboard, label: "Vue d’ensemble", path: "/app" },
-  { Icon: CalendarDays, label: "Agenda", path: "agenda" },
+  { Icon: CalendarDays, label: "Agenda", path: "/app/agenda" },
+  { Icon: Clock, label: "Rendez-vous", path: "/app/rendezvous" },
   { Icon: Scissors, label: "Prestations", path: "/app/prestations" },
-  { Icon: Users, label: "Clients", path: "clients" },
-  { Icon: UserRound, label: "Équipe", path: "equipe" },
+  { Icon: Users, label: "Clients", path: "/app/clients" },
+  { Icon: UserRound, label: "Équipe", path: "/app/equipe" },
   { Icon: Wallet, label: "Caisse & paiements", path: "caisse" },
   { Icon: Package, label: "Produits & stocks", path: "stocks" },
   { Icon: ChartNoAxesCombined, label: "Rapports", path: "rapports" },
@@ -832,40 +822,62 @@ function AppShell({ demo = false }: { demo?: boolean }) {
         </button>
         <small className="nav-caption">VOTRE ESPACE</small>
         <nav>
-          {navigation.map(({ Icon, label, path }) => {
-            const available = path.startsWith("/");
-            return available ? (
-              <Link
-                key={label}
-                onClick={() => setMenu(false)}
-                className={
-                  location.pathname === path || (demo && path === "/app")
-                    ? "active"
-                    : ""
-                }
-                to={demo ? "/apercu" : path}
-              >
-                <Icon size={19} />
-                {label}
-                {label === "Agenda" && demo && (
-                  <span className="nav-badge">8</span>
-                )}
-              </Link>
-            ) : (
-              <button
-                key={label}
-                onClick={() =>
-                  setNotice(
-                    `Le module « ${label} » est prévu dans les prochaines phases.`,
-                  )
-                }
-              >
-                <Icon size={19} />
-                {label}
-                <span className="soon-dot" />
-              </button>
-            );
-          })}
+          {navigation
+            .filter(
+              ({ path }) =>
+                demo ||
+                !["PRACTITIONER", "CASHIER"].includes(me.data?.role ?? "") ||
+                (me.data?.role === "CASHIER"
+                  ? ["/app", "/app/prestations", "caisse"].includes(path)
+                  : [
+                      "/app",
+                      "/app/agenda",
+                      "/app/rendezvous",
+                      "/app/prestations",
+                      "/app/equipe",
+                    ].includes(path)),
+            )
+            .map(({ Icon, label, path }) => {
+              const available = path.startsWith("/");
+              return available ? (
+                <Link
+                  key={label}
+                  onClick={() => setMenu(false)}
+                  className={
+                    location.pathname ===
+                    (demo ? path.replace("/app", "/apercu") : path)
+                      ? "active"
+                      : ""
+                  }
+                  to={
+                    demo
+                      ? path === "/app/prestations"
+                        ? "/app/prestations"
+                        : path.replace("/app", "/apercu")
+                      : path
+                  }
+                >
+                  <Icon size={19} />
+                  {label}
+                  {label === "Agenda" && demo && (
+                    <span className="nav-badge">8</span>
+                  )}
+                </Link>
+              ) : (
+                <button
+                  key={label}
+                  onClick={() =>
+                    setNotice(
+                      `Le module « ${label} » est prévu dans les prochaines phases.`,
+                    )
+                  }
+                >
+                  <Icon size={19} />
+                  {label}
+                  <span className="soon-dot" />
+                </button>
+              );
+            })}
         </nav>
         <div className="sidebar-bottom">
           <div className="help-card">
@@ -923,9 +935,11 @@ function AppShell({ demo = false }: { demo?: boolean }) {
           <div className="breadcrumb">
             Mon institut <span>/</span>
             <b>
-              {location.pathname.includes("prestations")
-                ? "Prestations"
-                : "Vue d’ensemble"}
+              {navigation.find(
+                (item) =>
+                  location.pathname ===
+                  (demo ? item.path.replace("/app", "/apercu") : item.path),
+              )?.label ?? "Vue d’ensemble"}
             </b>
           </div>
           <div className="header-right">
@@ -976,7 +990,17 @@ function AppShell({ demo = false }: { demo?: boolean }) {
             element={<Dashboard demo={demo} name={me.data?.user.name} />}
           />
           <Route path="prestations" element={<Services />} />
-          <Route path="*" element={<Navigate to="/app" replace />} />
+          <Route path="clients" element={<ClientsPage demo={demo} />} />
+          <Route path="equipe" element={<EmployeesPage demo={demo} />} />
+          <Route path="agenda" element={<AgendaPage demo={demo} />} />
+          <Route
+            path="rendezvous"
+            element={<AgendaPage demo={demo} initialView="list" />}
+          />
+          <Route
+            path="*"
+            element={<Navigate to={demo ? "/apercu" : "/app"} replace />}
+          />
         </Routes>
         <div className="app-footer">
           BELLEZA <span>Un peu plus de sérénité, chaque jour.</span>
@@ -992,7 +1016,7 @@ function Dashboard({ demo, name }: { demo: boolean; name?: string }) {
     queryFn: () =>
       api<{
         services: number;
-        clients: number;
+        clients: number | null;
         appointments: {
           id: string;
           customerName: string;
@@ -1000,6 +1024,7 @@ function Dashboard({ demo, name }: { demo: boolean; name?: string }) {
           startsAt: string;
           duration: number;
           status: string;
+          employee: { name: string } | null;
         }[];
       }>("/dashboard"),
     enabled: !demo,
@@ -1067,14 +1092,22 @@ function Dashboard({ demo, name }: { demo: boolean; name?: string }) {
             Icon: CalendarDays,
             detail: demo
               ? "Une journée bien remplie"
-              : "Agenda prévu en phase 3",
+              : "Créneaux et disponibilités à jour",
           },
           {
             label: "Votre clientèle",
-            value: demo ? "248" : String(data.data?.clients ?? 0),
+            value: demo
+              ? "248"
+              : data.data?.clients === null
+                ? "—"
+                : String(data.data?.clients ?? 0),
             unit: demo ? "clientes & clients" : "clients enregistrés",
             Icon: Users,
-            detail: demo ? "+18 ce mois-ci" : "Module clientèle à venir",
+            detail: demo
+              ? "+18 ce mois-ci"
+              : data.data?.clients === null
+                ? "Accès selon votre rôle"
+                : "Des fiches et un historique de visites",
           },
           {
             label: demo ? "Taux de satisfaction" : "Votre espace",
@@ -1237,20 +1270,20 @@ function Dashboard({ demo, name }: { demo: boolean; name?: string }) {
                 </div>
                 <ArrowUpRight size={18} />
               </Link>
-              <div>
+              <Link to="/app/equipe">
                 <span>02</span>
                 <div>
                   <b>Composer votre équipe</b>
-                  <small>Disponible dans la prochaine phase.</small>
+                  <small>Collaborateurs, horaires et absences.</small>
                 </div>
-              </div>
-              <div>
+              </Link>
+              <Link to="/app/agenda">
                 <span>03</span>
                 <div>
                   <b>Ouvrir votre agenda</b>
-                  <small>Disponible dans la prochaine phase.</small>
+                  <small>Planifiez les prochains soins.</small>
                 </div>
-              </div>
+              </Link>
             </div>
           )}
         </section>
@@ -1320,14 +1353,50 @@ function Dashboard({ demo, name }: { demo: boolean; name?: string }) {
               </tbody>
             </table>
           </div>
+        ) : data.data?.appointments.length ? (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>HORAIRE</th>
+                  <th>CLIENT</th>
+                  <th>PRESTATION</th>
+                  <th>COLLABORATEUR</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {data.data.appointments.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <b>
+                        {new Date(a.startsAt).toLocaleString("fr-FR", {
+                          timeZone: "Africa/Abidjan",
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </b>
+                      <small>{a.duration} min</small>
+                    </td>
+                    <td>{a.customerName}</td>
+                    <td>{a.serviceName}</td>
+                    <td>{a.employee?.name ?? "—"}</td>
+                    <td>
+                      <Link to="/app/rendezvous">Voir</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="empty">
             <CalendarDays size={27} />
-            <h3>Votre agenda prend bientôt vie.</h3>
-            <p>
-              La création de rendez-vous et la réservation publique seront
-              intégrées en phase 3 et 5.
-            </p>
+            <h3>Aucun rendez-vous à venir.</h3>
+            <p>Retrouvez les créneaux de votre équipe dans l’agenda.</p>
+            <Link className="button dark" to="/app/agenda">
+              Ouvrir l’agenda
+            </Link>
           </div>
         )}
       </section>

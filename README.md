@@ -1,46 +1,58 @@
 # BELLEZA
 
-Première tranche d’un SaaS multi-instituts destiné aux métiers de la beauté en Côte d’Ivoire. React + Vite + TypeScript, Tailwind, React Router, TanStack Query, React Hook Form / Zod, Lucide, Recharts ; Express, Prisma, PostgreSQL.
+SaaS de gestion d’instituts de beauté en Côte d’Ivoire, livré progressivement. React, Vite, TypeScript, React Router, TanStack Query, React Hook Form / Zod, Lucide et Recharts ; API Express, Prisma et PostgreSQL.
 
 ## Démarrage local
 
-Prérequis : Node.js 22.12+ ou 24, npm et PostgreSQL (Docker facultatif).
+Prérequis : Node.js 22.12+ ou 24 et npm. Une base PostgreSQL locale peut être démarrée sans Docker :
 
 ```powershell
 npm install
-# Créer votre fichier .env local avec les variables décrites ci-dessous
-docker compose up -d
 npm run db:generate
+npm run db:local
+```
+
+Gardez ce terminal ouvert. La commande crée un PostgreSQL persistant sur `127.0.0.1:55432`, une base d’application et une base de test distincte. Elle génère les identifiants aléatoires dans `.local/`, crée `.env` s’il n’existe pas et ajoute les exclusions au fichier local `.git/info/exclude`. Aucun identifiant n’est publié dans le dépôt.
+
+Dans un second terminal :
+
+```powershell
 npm run db:deploy
 npm run dev
 ```
 
-Créez un fichier `.env` sur votre ordinateur avec `DATABASE_URL` (votre connexion PostgreSQL), `PORT=3001`, `APP_ORIGIN=http://localhost:5173` et `NODE_ENV=development`. Les fichiers d’environnement ne sont pas publiés dans ce dépôt. Configurez vos exclusions Git locales avant tout commit pour exclure `.env`, `.env.*`, `node_modules/`, `dist/` et les journaux `*.log`.
+Ouvrez `http://127.0.0.1:5173`. Si Vite utilise un autre port, adaptez `APP_ORIGIN` dans votre `.env` local puis redémarrez l’API. L’API écoute sur `127.0.0.1:3001`. Pour utiliser votre propre PostgreSQL, renseignez `DATABASE_URL`, `PORT=3001`, `APP_ORIGIN` et `NODE_ENV=development` dans `.env`. Le compte de migration doit pouvoir activer l’extension `btree_gist` utilisée contre les réservations simultanées.
 
-Si Docker n’est pas disponible, créez une base PostgreSQL locale et renseignez `DATABASE_URL`. Le frontend fonctionne sur `http://localhost:5173`, l’API sur `http://127.0.0.1:3001`. Ouvrez bien `localhost:5173` pour correspondre à `APP_ORIGIN`. Aucun compte ni donnée métier n’est préchargé. Créez votre institut via `/inscription`, puis vos prestations via `/app/prestations`.
+Aucun compte ni donnée métier n’est préchargé. Créez votre institut via `/inscription`, ajoutez vos prestations, vos collaborateurs et leurs horaires, puis vos clients et rendez-vous. Les pages `/apercu/*` présentent des exemples explicitement illustratifs.
+
+## Modules disponibles
+
+- Vitrine responsive : dix photographies locales, diaporama et animations respectant la préférence de réduction des mouvements.
+- Inscription, connexion, déconnexion, sessions HttpOnly avec jetons stockés sous forme hachée ; données séparées par institut.
+- Catalogue : création, modification, recherche, filtres et archivage des prestations déjà utilisées.
+- Clients : fiches, recherche par nom ou téléphone, pagination, consentement marketing, archivage et historique des visites.
+- Équipe : collaborateurs, qualifications par prestation, horaires hebdomadaires et absences. Une absence ou modification d’horaire incompatible avec les réservations est refusée.
+- Agenda : jour, semaine, mois, liste, filtres, disponibilité, création et déplacement des rendez-vous, statuts contrôlés. Le tarif et la durée sont figés lors de la réservation.
+- Tableau de bord : compteurs réels et prochains rendez-vous, avec permissions selon le rôle.
+
+Les horaires utilisent le fuseau de Côte d’Ivoire (UTC). Une fiche collaborateur ne crée pas encore un compte : invitations et association au compte praticien seront livrées avec l’administration des utilisateurs.
+
+## Vérification
 
 ```powershell
 npm run build
 npm test
+npm run test:integration
 ```
 
-Le test d’intégration d’isolation est activé uniquement si `TEST_DATABASE_URL` référence une base PostgreSQL de test distincte avec les migrations appliquées. Il crée deux instituts, vérifie lecture / modification / suppression interdites entre A et B, vérifie les permissions et nettoie ses propres données. Sans cette variable, il est explicitement ignoré ; les tests unitaires seuls ne valident pas l’isolation en base.
+`npm test` exécute les tests unitaires et active les intégrations lorsque `TEST_DATABASE_URL` est défini. `test:integration` utilise la base de test créée par `db:local`, ou votre variable `TEST_DATABASE_URL`, applique les migrations puis exécute tous les tests. Il refuse de cibler la même base que l’application. Les intégrations vérifient l’isolation entre deux instituts, les permissions, les relations croisées interdites, les horaires et absences, les changements de statut et deux réservations concurrentes sur le même créneau. Elles nettoient leurs propres données.
 
-## Ce qui fonctionne
+## Prochaines étapes
 
-- Vitrine responsive avec vos photographies locales.
-- Maquette interactive `/apercu`, explicitement illustrative.
-- Inscription transactionnelle utilisateur / institut / adhésion ; connexion et déconnexion ; session HttpOnly avec jeton aléatoire stocké sous forme hachée.
-- Tableau de bord réel avec compteurs PostgreSQL et états vides.
-- Catalogue réel : créer, modifier, supprimer, rechercher et filtrer ; validation client et serveur ; permission propriétaire / responsable.
-- Filtrage serveur systématique des prestations par institut de la session.
+Caisse et paiements, produits et stocks, dépenses, fidélité, rapports et exports, réservation publique, invitations, récupération de mot de passe, notifications, abonnements et administration de plateforme restent à développer. Les boutons correspondants indiquent leur état. Aucun encaissement ni paiement externe n’est simulé.
 
-## Ce qui reste à livrer
+Voir [architecture](docs/ARCHITECTURE.md), [modèle](docs/DATA_MODEL.md) et [API](docs/API.md).
 
-Agenda, équipe, clients, caisse, stock, dépenses, fidélité, exports, réservation publique, super administration, abonnements, e-mails, réinitialisation / vérification, images sécurisées, audit, tâches planifiées et intégrations prestataires. Les boutons des modules futurs affichent leur état de développement. Pas de faux paiement ni d’essai commercial promis sans infrastructure.
+## Déploiement
 
-Voir [architecture](docs/ARCHITECTURE.md), [modèle cible](docs/DATA_MODEL.md) et [API](docs/API.md). Les tests unitaires actuels vérifient la portée tenant et les rôles du catalogue ; les tests d’intégration avec deux instituts et les tests de concurrence restent nécessaires avant production.
-
-## Préparation du déploiement
-
-Utiliser une base PostgreSQL gérée, sauvegardes et restaurations vérifiées, secrets distincts des exemples locaux, HTTPS, `NODE_ENV=production` et `APP_ORIGIN` exact. Servir `dist` et l’API sous le même domaine via proxy, avec repli SPA. L’API écoute en local pour une installation derrière ce proxy. Ne pas utiliser le serveur Vite en production. La migration de fondation est incluse et s’applique avec `npm run db:deploy`. Avant commercialisation : compléter les modules et contrôles documentés, tester l’isolation en PostgreSQL, les permissions, l’accessibilité et les parcours mobiles.
+Utiliser PostgreSQL géré, sauvegardes vérifiées, HTTPS, `NODE_ENV=production` et `APP_ORIGIN` exact. Servir `dist` et l’API sous le même domaine avec proxy `/api` et repli SPA. Ne pas utiliser Vite ou le PostgreSQL embarqué en production. Appliquer les migrations avec `npm run db:deploy`. Les fichiers d’environnement, données locales, dépendances et compilations restent exclus de Git ; le dépôt ne publie pas de `.gitignore` à la demande du propriétaire. Les modules restants, audit, supervision, performances et accessibilité doivent être finalisés avant commercialisation.
