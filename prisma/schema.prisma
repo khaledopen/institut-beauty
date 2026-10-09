@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  OWNER
+  MANAGER
+  RECEPTIONIST
+  PRACTITIONER
+  CASHIER
+}
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  name String
+  passwordHash String
+  memberships Member[]
+  sessions Session[]
+  createdAt DateTime @default(now())
+}
+model Institute {
+  id String @id @default(uuid())
+  name String
+  slug String @unique
+  address String @default("")
+  color String @default("#E8B4B8")
+  createdAt DateTime @default(now())
+  members Member[]
+  services Service[]
+  clients Client[]
+  appointments Appointment[]
+}
+model Member {
+  id String @id @default(uuid())
+  userId String
+  instituteId String
+  role Role @default(OWNER)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  sessions Session[]
+  @@unique([userId, instituteId])
+}
+model Session {
+  tokenHash String @id
+  userId String
+  memberId String
+  expiresAt DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+}
+model Service {
+  id String @id @default(uuid())
+  instituteId String
+  name String
+  description String @default("")
+  category String
+  price Int
+  duration Int
+  active Boolean @default(true)
+  institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  @@index([instituteId, active])
+}
+model Client {
+  id String @id @default(uuid())
+  instituteId String
+  name String
+  phone String
+  email String?
+  createdAt DateTime @default(now())
+  institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  @@index([instituteId, name])
+}
+model Appointment {
+  id String @id @default(uuid())
+  instituteId String
+  customerName String
+  phone String
+  serviceName String
+  startsAt DateTime
+  duration Int
+  price Int
+  status String @default("PENDING")
+  institute Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  @@index([instituteId, startsAt])
+}

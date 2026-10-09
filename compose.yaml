@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: belleza
+      POSTGRES_PASSWORD: belleza_local
+      POSTGRES_DB: belleza
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - belleza_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U belleza"]
+      interval: 5s
+      retries: 10
+volumes:
+  belleza_data:
